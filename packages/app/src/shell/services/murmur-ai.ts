@@ -95,8 +95,7 @@ const speakerFields = (input: TranscriptionInput): ReadonlyArray<MultipartField>
 
 const multipartFields = (input: TranscriptionInput): ReadonlyArray<MultipartField> => [
   ...languageFields(input),
-  ...speakerFields(input),
-  { name: "vad_method", value: "silero" }
+  ...speakerFields(input)
 ]
 
 const fieldPart = (boundary: string, field: MultipartField): Uint8Array =>
