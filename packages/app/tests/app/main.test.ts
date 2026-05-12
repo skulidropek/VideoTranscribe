@@ -1,54 +1,32 @@
-import { describe, expect, it } from "@effect/vitest"
-import { Effect } from "effect"
-import { vi } from "vitest"
+import * as Chunk from "effect/Chunk"
+import { describe, expect, it } from "vitest"
 
-import { program } from "../../src/app/program.js"
+import { makeRouter } from "../../src/app/program.js"
 
-const withLogSpy = Effect.acquireRelease(
-  Effect.sync(() => vi.spyOn(console, "log").mockImplementation(() => {})),
-  (spy) =>
-    Effect.sync(() => {
-      spy.mockRestore()
-    })
-)
+const config = {
+  host: "127.0.0.1",
+  jobTtlMs: 3_600_000,
+  maxUploadBytes: 10 * 1024 * 1024,
+  murmurAiApiKey: "test",
+  murmurAiBaseUrl: "http://localhost:8880",
+  pollIntervalMs: 10,
+  port: 0,
+  transcriptTimeoutMs: 100
+}
 
-const withArgv = (nextArgv: ReadonlyArray<string>) =>
-  Effect.acquireRelease(
-    Effect.sync(() => {
-      const previous = process.argv
-      process.argv = [...nextArgv]
-      return previous
-    }),
-    (previous) =>
-      Effect.sync(() => {
-        process.argv = previous
-      })
-  )
+describe("web server routes", () => {
+  it("defines the root web UI route", () => {
+    const router = makeRouter(config)
+    const root = Chunk.toReadonlyArray(router.routes).find((route) => route.path === "/" && route.method === "GET")
 
-describe("main program", () => {
-  it.effect("logs default greeting when no args", () =>
-    Effect.scoped(
-      Effect.gen(function*(_) {
-        const logSpy = yield* _(withLogSpy)
-        yield* _(withArgv(["node", "main"]))
-        yield* _(program)
-        yield* _(Effect.sync(() => {
-          expect(logSpy).toHaveBeenCalledTimes(1)
-          expect(logSpy).toHaveBeenLastCalledWith("Hello from Effect!")
-        }))
-      })
-    ))
+    expect(root).toBeDefined()
+  })
 
-  it.effect("logs named greeting when name is provided", () =>
-    Effect.scoped(
-      Effect.gen(function*(_) {
-        const logSpy = yield* _(withLogSpy)
-        yield* _(withArgv(["node", "main", "Alice"]))
-        yield* _(program)
-        yield* _(Effect.sync(() => {
-          expect(logSpy).toHaveBeenCalledTimes(1)
-          expect(logSpy).toHaveBeenLastCalledWith("Hello, Alice!")
-        }))
-      })
-    ))
+  it("keeps API routes under the documented paths", () => {
+    const paths = Chunk.toReadonlyArray(makeRouter(config).routes).map((route) => route.path)
+
+    expect(paths).toContain("/api/jobs")
+    expect(paths).toContain("/api/jobs/:id")
+    expect(paths).toContain("/api/jobs/:id/download")
+  })
 })

@@ -181,6 +181,15 @@ export default tseslint.config(
     }
   },
   {
+    name: "effect-ts-compliance-node-http-server-entrypoint",
+    files: ["src/app/main.ts"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        paths: restrictedImports
+      }]
+    }
+  },
+  {
     name: "effect-ts-compliance-core",
     files: ["src/core/**/*.ts"],
     rules: {
