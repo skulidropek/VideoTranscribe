@@ -120,7 +120,7 @@ const createProcessingInput = (
       fileName: upload.file.name,
       id,
       inputPath,
-      languageCode: upload.languageCode ?? "ru",
+      languageCode: upload.languageCode ?? "",
       mode: toMode(upload.mode),
       ocrLanguage: upload.ocrLanguage ?? "rus+eng",
       speakersExpected: optionalPositiveInteger(upload.speakersExpected),

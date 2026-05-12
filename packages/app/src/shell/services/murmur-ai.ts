@@ -80,18 +80,24 @@ const concatBytes = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
 
 const headerValue = (value: string): string => value.replaceAll(/[\r\n"]/g, "_")
 
-const multipartFields = (input: TranscriptionInput): ReadonlyArray<MultipartField> =>
+const languageFields = (input: TranscriptionInput): ReadonlyArray<MultipartField> => {
+  const languageCode = input.languageCode.trim()
+  return languageCode.length > 0 ? [{ name: "language_code", value: languageCode }] : []
+}
+
+const speakerFields = (input: TranscriptionInput): ReadonlyArray<MultipartField> =>
   input.speakersExpected === undefined
-    ? [
-      { name: "language_code", value: input.languageCode },
-      { name: "vad_method", value: "silero" }
-    ]
+    ? [{ name: "speaker_labels", value: "true" }]
     : [
-      { name: "language_code", value: input.languageCode },
       { name: "speaker_labels", value: "true" },
-      { name: "speakers_expected", value: String(input.speakersExpected) },
-      { name: "vad_method", value: "silero" }
+      { name: "speakers_expected", value: String(input.speakersExpected) }
     ]
+
+const multipartFields = (input: TranscriptionInput): ReadonlyArray<MultipartField> => [
+  ...languageFields(input),
+  ...speakerFields(input),
+  { name: "vad_method", value: "silero" }
+]
 
 const fieldPart = (boundary: string, field: MultipartField): Uint8Array =>
   encodeText(
