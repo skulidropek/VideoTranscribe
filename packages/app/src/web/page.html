@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>VideoTranscribe</title>
+		<style>
+			:root {
+				color-scheme: light;
+				--bg: #f7f8fa;
+				--panel: #ffffff;
+				--panel-soft: #eef4f8;
+				--text: #1d252c;
+				--muted: #64717d;
+				--line: #d8e0e6;
+				--primary: #156f78;
+				--primary-strong: #0d5961;
+				--primary-soft: #dff3f4;
+				--danger: #b42318;
+				--danger-soft: #fff0ee;
+				--success: #247a45;
+				--warning: #996f00;
+				--focus: #2f80ed;
+				font-family:
+					Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+					sans-serif;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				min-width: 320px;
+				margin: 0;
+				background: var(--bg);
+				color: var(--text);
+			}
+
+			button,
+			input,
+			select,
+			textarea {
+				font: inherit;
+			}
+
+			button:focus-visible,
+			input:focus-visible,
+			select:focus-visible,
+			textarea:focus-visible,
+			a:focus-visible {
+				outline: 3px solid color-mix(in srgb, var(--focus) 35%, transparent);
+				outline-offset: 2px;
+			}
+
+			.app-shell {
+				width: min(1180px, calc(100% - 32px));
+				margin: 0 auto;
+				padding: 28px 0;
+			}
+
+			.app-header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 16px;
+				margin-bottom: 18px;
+			}
+
+			.brand {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				min-width: 0;
+			}
+
+			.brand-mark {
+				display: grid;
+				flex: 0 0 auto;
+				width: 42px;
+				height: 42px;
+				place-items: center;
+				border-radius: 8px;
+				background: var(--primary);
+				color: #ffffff;
+				font-weight: 800;
+			}
+
+			h1 {
+				margin: 0;
+				font-size: clamp(1.45rem, 3vw, 2rem);
+				line-height: 1.05;
+				letter-spacing: 0;
+			}
+
+			.connection {
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
+				min-height: 34px;
+				padding: 6px 10px;
+				border: 1px solid var(--line);
+				border-radius: 999px;
+				background: var(--panel);
+				color: var(--muted);
+				font-size: 0.9rem;
+				white-space: nowrap;
+			}
+
+			.connection-dot {
+				width: 9px;
+				height: 9px;
+				border-radius: 50%;
+				background: var(--muted);
+			}
+
+			.connection[data-state="running"] .connection-dot {
+				background: var(--warning);
+			}
+
+			.connection[data-state="complete"] .connection-dot {
+				background: var(--success);
+			}
+
+			.connection[data-state="error"] .connection-dot {
+				background: var(--danger);
+			}
+
+			.workspace {
+				display: grid;
+				grid-template-columns: minmax(0, 430px) minmax(0, 1fr);
+				gap: 18px;
+				align-items: start;
+			}
+
+			.panel {
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				background: var(--panel);
+				box-shadow: 0 1px 2px rgb(16 24 40 / 6%);
+			}
+
+			.panel-header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 12px;
+				padding: 16px 18px 12px;
+				border-bottom: 1px solid var(--line);
+			}
+
+			.panel-title {
+				margin: 0;
+				font-size: 1rem;
+				font-weight: 750;
+				letter-spacing: 0;
+			}
+
+			.panel-body {
+				padding: 18px;
+			}
+
+			.form-grid {
+				display: grid;
+				gap: 16px;
+			}
+
+			.field {
+				display: grid;
+				gap: 7px;
+			}
+
+			.field-row {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 12px;
+			}
+
+			label,
+			.legend {
+				color: var(--text);
+				font-size: 0.88rem;
+				font-weight: 700;
+			}
+
+			.hint {
+				color: var(--muted);
+				font-size: 0.82rem;
+				line-height: 1.4;
+			}
+
+			.drop-zone {
+				position: relative;
+				display: grid;
+				min-height: 160px;
+				place-items: center;
+				padding: 18px;
+				border: 1.5px dashed #9fb2bf;
+				border-radius: 8px;
+				background: var(--panel-soft);
+				text-align: center;
+				transition:
+					border-color 150ms ease,
+					background-color 150ms ease;
+			}
+
+			.drop-zone[data-active="true"] {
+				border-color: var(--primary);
+				background: var(--primary-soft);
+			}
+
+			.drop-zone input {
+				position: absolute;
+				inset: 0;
+				width: 100%;
+				height: 100%;
+				cursor: pointer;
+				opacity: 0;
+			}
+
+			.file-icon {
+				display: inline-grid;
+				width: 46px;
+				height: 46px;
+				margin-bottom: 10px;
+				place-items: center;
+				border-radius: 8px;
+				background: #ffffff;
+				color: var(--primary);
+				font-size: 1.35rem;
+				font-weight: 800;
+				box-shadow: inset 0 0 0 1px var(--line);
+			}
+
+			.file-name {
+				margin: 0;
+				font-weight: 750;
+				overflow-wrap: anywhere;
+			}
+
+			.segmented {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 6px;
+				padding: 4px;
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				background: #f1f5f7;
+			}
+
+			.segmented label {
+				position: relative;
+				display: grid;
+				min-height: 42px;
+				place-items: center;
+				border-radius: 6px;
+				color: var(--muted);
+				cursor: pointer;
+				text-align: center;
+			}
+
+			.segmented input {
+				position: absolute;
+				opacity: 0;
+			}
+
+			.segmented label:has(input:checked) {
+				background: #ffffff;
+				color: var(--primary-strong);
+				box-shadow: 0 1px 2px rgb(16 24 40 / 8%);
+			}
+
+			.control {
+				width: 100%;
+				min-height: 42px;
+				padding: 9px 11px;
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				background: #ffffff;
+				color: var(--text);
+			}
+
+			.actions {
+				display: flex;
+				gap: 10px;
+				align-items: center;
+				justify-content: flex-end;
+				padding-top: 2px;
+			}
+
+			.button {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				min-height: 42px;
+				padding: 9px 14px;
+				border: 1px solid transparent;
+				border-radius: 8px;
+				background: var(--primary);
+				color: #ffffff;
+				font-weight: 750;
+				text-decoration: none;
+				cursor: pointer;
+			}
+
+			.button:hover {
+				background: var(--primary-strong);
+			}
+
+			.button:disabled,
+			.button[aria-disabled="true"] {
+				background: #b5c2c9;
+				cursor: not-allowed;
+			}
+
+			.button.secondary {
+				border-color: var(--line);
+				background: #ffffff;
+				color: var(--text);
+			}
+
+			.button.secondary:hover {
+				background: #f1f5f7;
+			}
+
+			.status-grid {
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+				gap: 10px;
+				margin-bottom: 16px;
+			}
+
+			.metric {
+				min-height: 78px;
+				padding: 12px;
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				background: #fbfcfd;
+			}
+
+			.metric-label {
+				margin: 0 0 6px;
+				color: var(--muted);
+				font-size: 0.78rem;
+				font-weight: 700;
+				text-transform: uppercase;
+			}
+
+			.metric-value {
+				margin: 0;
+				font-size: 1.12rem;
+				font-weight: 800;
+				overflow-wrap: anywhere;
+			}
+
+			.progress-track {
+				overflow: hidden;
+				height: 10px;
+				margin-bottom: 16px;
+				border-radius: 999px;
+				background: #e7edf1;
+			}
+
+			.progress-fill {
+				width: 0%;
+				height: 100%;
+				border-radius: inherit;
+				background: var(--primary);
+				transition: width 250ms ease;
+			}
+
+			.message {
+				display: none;
+				margin-bottom: 16px;
+				padding: 12px;
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				background: #fbfcfd;
+				color: var(--text);
+				line-height: 1.45;
+				overflow-wrap: anywhere;
+			}
+
+			.message[data-visible="true"] {
+				display: block;
+			}
+
+			.message.error {
+				border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+				background: var(--danger-soft);
+				color: var(--danger);
+			}
+
+			.preview {
+				width: 100%;
+				min-height: 310px;
+				max-height: 52vh;
+				margin: 0;
+				padding: 14px;
+				overflow: auto;
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				background: #111820;
+				color: #e8eef2;
+				font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+				font-size: 0.9rem;
+				line-height: 1.55;
+				white-space: pre-wrap;
+			}
+
+			.status-actions {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 10px;
+				align-items: center;
+				justify-content: flex-end;
+				margin-top: 14px;
+			}
+
+			@media (max-width: 860px) {
+				.workspace {
+					grid-template-columns: 1fr;
+				}
+
+				.status-grid {
+					grid-template-columns: 1fr;
+				}
+			}
+
+			@media (max-width: 560px) {
+				.app-shell {
+					width: min(100% - 20px, 1180px);
+					padding: 16px 0;
+				}
+
+				.app-header,
+				.field-row,
+				.actions {
+					align-items: stretch;
+					flex-direction: column;
+				}
+
+				.app-header {
+					display: grid;
+				}
+
+				.field-row {
+					grid-template-columns: 1fr;
+				}
+
+				.connection,
+				.button {
+					width: 100%;
+				}
+
+				.preview {
+					min-height: 260px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main class="app-shell">
+			<header class="app-header">
+				<div class="brand">
+					<div class="brand-mark" aria-hidden="true">VT</div>
+					<h1>VideoTranscribe</h1>
+				</div>
+				<div class="connection" id="connection" data-state="idle" role="status" aria-live="polite">
+					<span class="connection-dot" aria-hidden="true"></span>
+					<span id="connectionText">Ready</span>
+				</div>
+			</header>
+
+			<div class="workspace">
+				<section class="panel" aria-labelledby="uploadTitle">
+					<div class="panel-header">
+						<h2 class="panel-title" id="uploadTitle">New transcription job</h2>
+					</div>
+					<div class="panel-body">
+						<form class="form-grid" id="jobForm">
+							<div class="field">
+								<label for="mediaFile">Source file</label>
+								<div class="drop-zone" id="dropZone" data-active="false">
+									<input id="mediaFile" name="file" type="file" required />
+									<div>
+										<span class="file-icon" aria-hidden="true">+</span>
+										<p class="file-name" id="fileName">Choose or drop a video/audio file</p>
+										<div class="hint">The file is sent as multipart form data to /api/jobs.</div>
+									</div>
+								</div>
+							</div>
+
+							<fieldset class="field" style="margin: 0; padding: 0; border: 0;">
+								<legend class="legend">Mode</legend>
+								<div class="segmented">
+									<label>
+										<input type="radio" name="mode" value="text" checked />
+										Text
+									</label>
+									<label>
+										<input type="radio" name="mode" value="text+images" />
+										Text + images
+									</label>
+								</div>
+							</fieldset>
+
+							<div class="field-row">
+								<div class="field">
+									<label for="speakersExpected">Speakers expected</label>
+									<input
+										class="control"
+										id="speakersExpected"
+										name="speakersExpected"
+										type="number"
+										min="0"
+										step="1"
+										inputmode="numeric"
+										placeholder="Auto"
+									/>
+								</div>
+								<div class="field">
+									<label for="languageCode">Speech language</label>
+									<input
+										class="control"
+										id="languageCode"
+										name="languageCode"
+										type="text"
+										autocomplete="off"
+										value="ru"
+										placeholder="ru"
+									/>
+								</div>
+							</div>
+
+							<div class="field-row">
+								<div class="field">
+									<label for="ocrLanguage">OCR language</label>
+									<input
+										class="control"
+										id="ocrLanguage"
+										name="ocrLanguage"
+										type="text"
+										autocomplete="off"
+										placeholder="eng"
+									/>
+								</div>
+							</div>
+
+							<div class="actions">
+								<button class="button secondary" id="resetButton" type="reset">Reset</button>
+								<button class="button" id="submitButton" type="submit">Start job</button>
+							</div>
+						</form>
+					</div>
+				</section>
+
+				<section class="panel" aria-labelledby="statusTitle">
+					<div class="panel-header">
+						<h2 class="panel-title" id="statusTitle">Job status</h2>
+					</div>
+					<div class="panel-body">
+						<div class="status-grid">
+							<div class="metric">
+								<p class="metric-label">Job ID</p>
+								<p class="metric-value" id="jobId">-</p>
+							</div>
+							<div class="metric">
+								<p class="metric-label">State</p>
+								<p class="metric-value" id="jobState">Idle</p>
+							</div>
+							<div class="metric">
+								<p class="metric-label">Progress</p>
+								<p class="metric-value" id="progressText">0%</p>
+							</div>
+						</div>
+
+						<div class="progress-track" aria-hidden="true">
+							<div class="progress-fill" id="progressFill"></div>
+						</div>
+
+						<div class="message" id="message" data-visible="false"></div>
+						<pre class="preview" id="preview" aria-label="Transcription preview">No job submitted yet.</pre>
+
+						<div class="status-actions">
+							<a class="button secondary" id="downloadLink" href="#" aria-disabled="true">Download result</a>
+						</div>
+					</div>
+				</section>
+			</div>
+		</main>
+
+		<script>
+			(function () {
+				"use strict";
+
+				var pollDelayMs = 1400;
+				var activeJobId = "";
+				var pollTimer = 0;
+
+				var form = document.getElementById("jobForm");
+				var dropZone = document.getElementById("dropZone");
+				var fileInput = document.getElementById("mediaFile");
+				var fileName = document.getElementById("fileName");
+				var submitButton = document.getElementById("submitButton");
+				var connection = document.getElementById("connection");
+				var connectionText = document.getElementById("connectionText");
+				var jobId = document.getElementById("jobId");
+				var jobState = document.getElementById("jobState");
+				var progressText = document.getElementById("progressText");
+				var progressFill = document.getElementById("progressFill");
+				var message = document.getElementById("message");
+				var preview = document.getElementById("preview");
+				var downloadLink = document.getElementById("downloadLink");
+
+				function setConnection(state, text) {
+					connection.dataset.state = state;
+					connectionText.textContent = text;
+				}
+
+				function showMessage(text, isError) {
+					message.textContent = text;
+					message.dataset.visible = text ? "true" : "false";
+					message.classList.toggle("error", Boolean(isError));
+				}
+
+				function normalizeProgress(value) {
+					var numberValue = Number(value);
+					if (!Number.isFinite(numberValue)) {
+						return 0;
+					}
+					if (numberValue <= 1 && numberValue >= 0) {
+						return Math.round(numberValue * 100);
+					}
+					return Math.max(0, Math.min(100, Math.round(numberValue)));
+				}
+
+				function getText(value, fallback) {
+					if (typeof value === "string" && value.trim().length > 0) {
+						return value;
+					}
+					return fallback;
+				}
+
+				function setProgress(value) {
+					var percent = normalizeProgress(value);
+					progressText.textContent = String(percent) + "%";
+					progressFill.style.width = String(percent) + "%";
+				}
+
+				function setDownload(jobIdValue, enabled) {
+					if (enabled && jobIdValue) {
+						downloadLink.href = "/api/jobs/" + encodeURIComponent(jobIdValue) + "/download";
+						downloadLink.setAttribute("aria-disabled", "false");
+						return;
+					}
+					downloadLink.href = "#";
+					downloadLink.setAttribute("aria-disabled", "true");
+				}
+
+				function extractJobId(payload) {
+					if (payload && typeof payload.id === "string") {
+						return payload.id;
+					}
+					if (payload && typeof payload.jobId === "string") {
+						return payload.jobId;
+					}
+					return "";
+				}
+
+				function isTerminalSuccess(status) {
+					return status === "done" || status === "completed" || status === "complete" || status === "success";
+				}
+
+				function isTerminalError(status) {
+					return status === "failed" || status === "error" || status === "cancelled" || status === "canceled";
+				}
+
+				function updateStatus(payload) {
+					var status = getText(payload && payload.status, getText(payload && payload.state, "running"));
+					var payloadJobId = extractJobId(payload) || activeJobId;
+					var percent = payload && Object.prototype.hasOwnProperty.call(payload, "progress") ? payload.progress : 0;
+					var previewText = getText(
+						payload && payload.preview,
+						getText(payload && payload.textPreview, getText(payload && payload.transcriptPreview, "Waiting for preview..."))
+					);
+					var errorText = getText(payload && payload.error, getText(payload && payload.message, ""));
+
+					jobId.textContent = payloadJobId || "-";
+					jobState.textContent = status;
+					setProgress(percent);
+					preview.textContent = previewText;
+
+					if (isTerminalError(status)) {
+						setConnection("error", "Failed");
+						showMessage(errorText || "The job failed.", true);
+						submitButton.disabled = false;
+						window.clearTimeout(pollTimer);
+						setDownload(payloadJobId, false);
+						return false;
+					}
+
+					if (isTerminalSuccess(status)) {
+						setConnection("complete", "Complete");
+						showMessage("Transcription is ready.", false);
+						setProgress(100);
+						submitButton.disabled = false;
+						window.clearTimeout(pollTimer);
+						setDownload(payloadJobId, true);
+						return false;
+					}
+
+					setConnection("running", "Processing");
+					showMessage(errorText, Boolean(errorText));
+					setDownload(payloadJobId, false);
+					return true;
+				}
+
+				function pollJob() {
+					if (!activeJobId) {
+						return;
+					}
+					fetch("/api/jobs/" + encodeURIComponent(activeJobId), {
+						headers: { "Accept": "application/json" }
+					})
+						.then(function (response) {
+							if (!response.ok) {
+								throw new Error("Status request failed with HTTP " + String(response.status));
+							}
+							return response.json();
+						})
+						.then(function (payload) {
+							if (updateStatus(payload)) {
+								pollTimer = window.setTimeout(pollJob, pollDelayMs);
+							}
+						})
+						.catch(function (error) {
+							setConnection("error", "Polling error");
+							showMessage(error.message || "Unable to poll job status.", true);
+							submitButton.disabled = false;
+						});
+				}
+
+				function appendOptional(formData, formElement, name) {
+					var field = formElement.elements.namedItem(name);
+					if (!field || typeof field.value !== "string") {
+						return;
+					}
+					var value = field.value.trim();
+					if (value.length > 0) {
+						formData.append(name, value);
+					}
+				}
+
+				function setSelectedFileName() {
+					var file = fileInput.files && fileInput.files.length > 0 ? fileInput.files[0] : null;
+					fileName.textContent = file ? file.name : "Choose or drop a video/audio file";
+				}
+
+				fileInput.addEventListener("change", setSelectedFileName);
+
+				dropZone.addEventListener("dragenter", function () {
+					dropZone.dataset.active = "true";
+				});
+
+				dropZone.addEventListener("dragleave", function () {
+					dropZone.dataset.active = "false";
+				});
+
+				dropZone.addEventListener("drop", function () {
+					dropZone.dataset.active = "false";
+				});
+
+				form.addEventListener("reset", function () {
+					window.clearTimeout(pollTimer);
+					activeJobId = "";
+					setConnection("idle", "Ready");
+					jobId.textContent = "-";
+					jobState.textContent = "Idle";
+					setProgress(0);
+					showMessage("", false);
+					preview.textContent = "No job submitted yet.";
+					setDownload("", false);
+					window.setTimeout(setSelectedFileName, 0);
+				});
+
+				form.addEventListener("submit", function (event) {
+					event.preventDefault();
+					window.clearTimeout(pollTimer);
+					showMessage("", false);
+					setDownload("", false);
+
+					var selectedFile = fileInput.files && fileInput.files.length > 0 ? fileInput.files[0] : null;
+					if (!selectedFile) {
+						showMessage("Select a source file before starting the job.", true);
+						return;
+					}
+
+					var formData = new FormData();
+					formData.append("file", selectedFile);
+					formData.append("mode", new FormData(form).get("mode") || "text");
+					appendOptional(formData, form, "speakersExpected");
+					appendOptional(formData, form, "languageCode");
+					appendOptional(formData, form, "ocrLanguage");
+
+					submitButton.disabled = true;
+					setConnection("running", "Uploading");
+					jobState.textContent = "Uploading";
+					setProgress(0);
+					preview.textContent = "Uploading " + selectedFile.name + "...";
+
+					fetch("/api/jobs", {
+						method: "POST",
+						body: formData,
+						headers: { "Accept": "application/json" }
+					})
+						.then(function (response) {
+							if (!response.ok) {
+								throw new Error("Upload failed with HTTP " + String(response.status));
+							}
+							return response.json();
+						})
+						.then(function (payload) {
+							var createdJobId = extractJobId(payload);
+							if (!createdJobId) {
+								throw new Error("The API response did not include a job id.");
+							}
+							activeJobId = createdJobId;
+							jobId.textContent = createdJobId;
+							jobState.textContent = "Queued";
+							setConnection("running", "Queued");
+							preview.textContent = "Job queued. Waiting for processing status...";
+							pollJob();
+						})
+						.catch(function (error) {
+							setConnection("error", "Upload error");
+							showMessage(error.message || "Unable to create a transcription job.", true);
+							jobState.textContent = "Error";
+							submitButton.disabled = false;
+						});
+				});
+
+				downloadLink.addEventListener("click", function (event) {
+					if (downloadLink.getAttribute("aria-disabled") === "true") {
+						event.preventDefault();
+					}
+				});
+			})();
+		</script>
+	</body>
+</html>

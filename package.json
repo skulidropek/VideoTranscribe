@@ -41,7 +41,9 @@
     ],
     "onlyBuiltDependencies": [
       "@parcel/watcher",
+      "ffmpeg-static",
       "msgpackr-extract",
+      "tesseract.js",
       "unrs-resolver"
     ],
     "patchedDependencies": {
